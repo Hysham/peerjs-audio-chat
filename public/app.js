@@ -5,6 +5,7 @@ navigator.getUserMedia = (navigator.getUserMedia || navigator.webkitGetUserMedia
 var me = {};
 var myStream;
 var peers = {};
+var camera = []
 
 init();
 
@@ -14,11 +15,13 @@ function init() {
 
   getLocalAudioStream(function(err, stream) {
     if (err || !stream) return;
-
+    
     connectToPeerJS(function(err) {
       if (err) return;
-
+      
       registerIdWithServer(me.id);
+      console.log('peer length: ',call.peers.length)
+      playStream(stream, me.id)
       if (call.peers.length) callPeers();
       else displayShareMessage();
     });
@@ -28,7 +31,11 @@ function init() {
 // Connect to PeerJS and get an ID
 function connectToPeerJS(cb) {
   display('Connecting to PeerJS...');
-  me = new Peer({key: API_KEY});
+  me = new Peer({
+        host: "gra6.fesnit.net",
+        port: 9000,
+        path: '/peerjs'
+    });
 
   me.on('call', handleIncomingCall);
   
@@ -82,7 +89,7 @@ function handleIncomingCall(incoming) {
   peer.incoming = incoming;
   incoming.answer(myStream);
   peer.incoming.on('stream', function(stream) {
-    addIncomingStream(peer, stream);
+      addIncomingStream(peer, stream);
   });
 }
 
@@ -91,13 +98,30 @@ function handleIncomingCall(incoming) {
 function addIncomingStream(peer, stream) {
   display('Adding incoming stream from ' + peer.id);
   peer.incomingStream = stream;
-  playStream(stream);
+  playStream(stream, peer.id);
 }
 
 // Create an <audio> element to play the audio stream
-function playStream(stream) {
-  var audio = $('<audio autoplay />').appendTo('body');
-  audio[0].src = (URL || webkitURL || mozURL).createObjectURL(stream);
+function playStream(stream,peerId) {
+  //audio[0].src = (URL || webkitURL || mozURL).createObjectURL(stream);
+  console.log(peerId)
+  if(camera.find((id) => id === peerId) === undefined){
+    camera.push(peerId)
+    var videoElm = $('<video />', {
+      id:peerId,
+      autoplay:'autoplay',
+      width:300,
+      height:300
+    });
+    
+    videoElm.appendTo($('#gallery'));
+    var video = document.getElementById(peerId);
+    video.srcObject=stream;
+      //video.play();
+      // Store a global reference of the stream
+    window.peer_stream = stream;
+  }
+  
 }
 
 // Get access to the microphone
@@ -105,11 +129,12 @@ function getLocalAudioStream(cb) {
   display('Trying to access your microphone. Please click "Allow".');
 
   navigator.getUserMedia (
-    {video: false, audio: true},
+    {video: true, audio: true},
 
     function success(audioStream) {
       display('Microphone is open.');
       myStream = audioStream;
+      
       if (cb) cb(null, myStream);
     },
 
@@ -119,8 +144,6 @@ function getLocalAudioStream(cb) {
     }
   );
 }
-
-
 
 ////////////////////////////////////
 // Helper functions
