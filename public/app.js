@@ -6,6 +6,7 @@ var me = {};
 var myStream;
 var peers = {};
 var camera = []
+var peerIds = []
 
 init();
 
@@ -54,17 +55,17 @@ function connectToPeerJS(cb) {
 // Add our ID to the list of PeerJS IDs for this call
 function registerIdWithServer() {
   display('Registering ID with server...');
-  $.post('/' + call.id + '/addpeer/' + me.id);
+  // $.post('/' + call.id + '/addpeer/' + me.id);
 } 
 
 // Remove our ID from the call's list of IDs
 function unregisterIdWithServer() {
-  $.post('/' + call.id + '/removepeer/' + me.id);
+  // $.post('/' + call.id + '/removepeer/' + me.id);
 }
 
 // Call each of the peer IDs using PeerJS
 function callPeers() {
-  call.peers.forEach(callPeer);
+    peerIds.forEach(callPeer);
 }
 
 function callPeer(peerId) {
@@ -84,13 +85,31 @@ function callPeer(peerId) {
 
 // When someone initiates a call via PeerJS
 function handleIncomingCall(incoming) {
-  display('Answering incoming call from ' + incoming.peer);
-  var peer = getPeer(incoming.peer);
-  peer.incoming = incoming;
-  incoming.answer(myStream);
-  peer.incoming.on('stream', function(stream) {
-      addIncomingStream(peer, stream);
-  });
+  console.log(incoming)
+  var acceptsCall = true
+  
+  //concat remote ids
+  if(incoming.metadata!==undefined){
+    acceptsCall = confirm("Videocall incoming, do you want to accept it ?");
+    peerIds = peerIds.concat(incoming.metadata.peerIds)
+  }
+  if(acceptsCall){
+    display('Answering incoming call from ' + incoming.peer);
+    var peer = getPeer(incoming.peer);
+    peer.incoming = incoming;
+    incoming.answer(myStream);
+    peer.incoming.on('stream', function(stream) {
+        addIncomingStream(peer, stream);
+    });
+    console.log('peerIds,:',peerIds)
+    if(incoming.metadata!==undefined){
+      if(peerIds.length>0){
+        callPeers()
+      }
+    }
+  }
+  
+  
 }
 
 // Add the new audio stream. Either from an incoming call, or
@@ -117,8 +136,6 @@ function playStream(stream,peerId) {
     videoElm.appendTo($('#gallery'));
     var video = document.getElementById(peerId);
     video.srcObject=stream;
-      //video.play();
-      // Store a global reference of the stream
     window.peer_stream = stream;
   }
   
@@ -167,3 +184,20 @@ function unsupported() {
 function display(message) {
   $('<div />').html(message).appendTo('#display');
 }
+
+document.getElementById("call").addEventListener("click", function(){
+  peer_id = document.getElementById("peer_id").value;
+  
+  var call = me.call(peer_id, myStream,{
+          metadata: {
+              'peerIds': peerIds
+          }
+      });
+
+  call.on('stream', function (stream) {
+      window.peer_stream = stream;
+      playStream(stream,peer_id)
+  });
+
+  peerIds.push(peer_id)
+})
