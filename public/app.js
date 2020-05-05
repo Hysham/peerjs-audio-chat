@@ -35,7 +35,13 @@ function connectToPeerJS(cb) {
   me = new Peer({
         host: "gra6.fesnit.net",
         port: 9000,
-        path: '/peerjs'
+        path: '/peerjs',
+        debug: 3,
+        config: {
+            'iceServers': [
+                { url: 'stun:stun1.l.google.com:19302' }
+            ]
+        }
     });
 
   me.on('call', handleIncomingCall);
@@ -85,13 +91,16 @@ function callPeer(peerId) {
 
 // When someone initiates a call via PeerJS
 function handleIncomingCall(incoming) {
-  console.log(incoming)
-  var acceptsCall = true
+  console.log('incoming: ',incoming)
+  var acceptsCall 
   
   //concat remote ids
   if(incoming.metadata!==undefined){
+    console.log('---------------')
     acceptsCall = confirm("Videocall incoming, do you want to accept it ?");
     peerIds = peerIds.concat(incoming.metadata.peerIds)
+  }else{
+    acceptsCall = true
   }
   if(acceptsCall){
     display('Answering incoming call from ' + incoming.peer);
@@ -186,18 +195,25 @@ function display(message) {
 }
 
 document.getElementById("call").addEventListener("click", function(){
+  
   peer_id = document.getElementById("peer_id").value;
+  console.log(peer_id)
   
   var call = me.call(peer_id, myStream,{
-          metadata: {
-              'peerIds': peerIds
-          }
-      });
+    metadata: {
+        'peerIds': peerIds
+    }
+});
 
-  call.on('stream', function (stream) {
-      window.peer_stream = stream;
-      playStream(stream,peer_id)
+  call.on('error', function(err) {
+    display(err);
+  });
+
+  call.on('stream', function(stream) {
+    display('Connected to ' + peer_id + '.');
+    playStream(stream, peer_id);
   });
 
   peerIds.push(peer_id)
+  console.log(peerIds)
 })

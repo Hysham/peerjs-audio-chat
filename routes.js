@@ -8,7 +8,7 @@ var Call = require('./call');
 router.get('/new', function(req, res) {
   console.log('Create a new Call instance, and redirect')
   var call = Call.create();
-  res.redirect('/' + call.id);
+  res.redirect('/');
 });
 
 // Add PeerJS ID to Call instance when someone opens the page
@@ -53,7 +53,13 @@ router.get('/:id', function(req, res) {
 // Landing page
 router.get('/', function(req, res) {
   console.log("Landing page")
-  res.render('index');
+  var call = Call.create();
+  //if (!call) return res.redirect('/new');
+ // res.render('index');
+  res.render('call', {
+    apiKey: config.peerjs.key,
+    call: call
+  });
 });
 
 
