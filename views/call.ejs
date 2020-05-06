@@ -4,22 +4,57 @@
   <title>WebRTC/PeerJS Audio Call</title>
   <link rel="stylesheet" type="text/css" href="/normalize.css">
   <link rel="stylesheet" type="text/css" href="/style.css">
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootswatch/3.3.7/cerulean/bootstrap.min.css">
 </head>
 <body>
   <div id="gallery"></div>
+
   <div class="wrapper">
-    <input type="text" name="peer_id" id="peer_id" placeholder="Peer ID" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
-    <div >
-      <button id="call">Call to Peer</button>
+    <div>
+      <h1 class="text-center">
+        <br>
+          Video Chat Example
+        <br>
+        
+      </h1>
+      <div>
+        <h4 class="text-center">
+          <span id="peer-id-label">ID: null</span>
+        </h4>
+      </div>
+      <div class="form-group">
+        <label class="control-label">Set peer ID</label>
+        <div class="input-group">
+            <input type="text" class="form-control" name="peerId" id="peerId" placeholder="set your peer id ...">
+            <span class="input-group-btn">
+                <button id="btnPeerId" class="btn btn-success">Set peer id</button>
+            </span>
+        </div>
+
+        <div class="form-group">
+          <label class="control-label">Call</label>
+          <div class="input-group">
+              <input type="text" class="form-control" name="peer_id" id="peer_id" placeholder="remote peer id ...">
+              <span class="input-group-btn">
+                  <button id="btnCall" class="btn btn-success">Call</button>
+              </span>
+              
+          </div>
+          <div>
+            <label class="control-label">End</label>
+            <span class="input-group-btn">
+              <button id="btnReject" class="btn btn-danger">End</button>
+            </span>
+          </div>
+          
+    </div>
     </div>
     <div id="display"></div>
+    <br>
+    <br>
   </div>
   
-  <footer>
-    <div class="wrapper">
-      <a href="/new">Start another call</a>
-    </div>
-  </footer>
+  
 
   <a href="https://github.com/nwah/peerjs-audio-chat"><img style="position: absolute; top: 0; right: 0; border: 0;" src="https://camo.githubusercontent.com/38ef81f8aca64bb9a64448d0d70f1308ef5341ab/68747470733a2f2f73332e616d617a6f6e6177732e636f6d2f6769746875622f726962626f6e732f666f726b6d655f72696768745f6461726b626c75655f3132313632312e706e67" alt="Fork me on GitHub" data-canonical-src="https://s3.amazonaws.com/github/ribbons/forkme_right_darkblue_121621.png"></a>
   
@@ -29,7 +64,7 @@
   </script>
 
   <script src="//ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
-  <script src="https://unpkg.com/peerjs@1.0.0/dist/peerjs.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/peerjs@0.3.20/dist/peer.min.js"></script>
   <script src="/app.js"></script>
 </body>
 </html>

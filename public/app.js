@@ -7,8 +7,8 @@ var myStream;
 var peers = {};
 var camera = []
 var peerIds = []
+var my_peer_id;
 
-init();
 
 // Start everything up
 function init() {
@@ -32,7 +32,7 @@ function init() {
 // Connect to PeerJS and get an ID
 function connectToPeerJS(cb) {
   display('Connecting to PeerJS...');
-  me = new Peer({
+  me = new Peer(my_peer_id,{
         host: "gra6.fesnit.net",
         port: 9000,
         path: '/peerjs',
@@ -87,6 +87,22 @@ function callPeer(peerId) {
     display('Connected to ' + peerId + '.');
     addIncomingStream(peer, stream);
   });
+
+  peer.outgoing.on('close', function() {
+    console.log('connection closed');
+    getOutgoingSessions((sessions)=>{
+      sessions.forEach((session)=>{
+        //video_stream = document.getElementById(id).srcObject
+        if(!session.outgoing.open){
+          delete peers[session.id]
+          $("#"+session.id).remove();
+          camera = camera.filter(function(id) {
+            return id !== session.id
+          })
+        }
+      })
+    })
+  });
 }
 
 // When someone initiates a call via PeerJS
@@ -104,16 +120,46 @@ function handleIncomingCall(incoming) {
   }else{
     acceptsCall = true
   }
+
+
   if(acceptsCall){
     display('Answering incoming call from ' + incoming.peer);
     var peer = getPeer(incoming.peer);
     peer.incoming = incoming;
+    console.log('============')
     incoming.answer(myStream);
     peer.incoming.on('stream', function(stream) {
         addIncomingStream(peer, stream);
+        console.log(peers)
     });
+
+    peer.incoming.on('close', function() {
+      console.log('-connection closed');
+      // let video_stream
+      getIncommingSessions((sessions)=>{
+        sessions.forEach((session)=>{
+          //video_stream = document.getElementById(id).srcObject
+          if(!session.incoming.open){
+            delete peers[session.id]
+            $("#"+session.id).remove();
+            camera = camera.filter(function(id) {
+              return id !== session.id
+            })
+          }
+        })
+      })
+      console.log(peers)
+    });
+
+    peer.incoming.on('error', function(err) {
+      display(err);
+    });
+
     console.log('peerIds,:',peerIds)
     if(incoming.metadata!==undefined){
+      peerIds = peerIds.filter((id)=>{
+        return id!==my_peer_id
+      })
       if(peerIds.length>0){
         callPeers()
       }
@@ -121,6 +167,32 @@ function handleIncomingCall(incoming) {
   }
   
   
+}
+
+function getIncommingSessions(cb){
+    let sessions = []
+    Object.keys(peers).forEach(function(key) {
+      
+      if(peers[key].incoming !== undefined){
+        sessions.push(peers[key])
+      }
+    
+    });
+
+    cb(sessions)
+}
+
+function getOutgoingSessions(cb){
+  let sessions = []
+  Object.keys(peers).forEach(function(key) {
+    
+    if(peers[key].outgoing !== undefined){
+      sessions.push(peers[key])
+    }
+  
+  });
+
+  cb(sessions)
 }
 
 // Add the new audio stream. Either from an incoming call, or
@@ -134,7 +206,7 @@ function addIncomingStream(peer, stream) {
 // Create an <audio> element to play the audio stream
 function playStream(stream,peerId) {
   //audio[0].src = (URL || webkitURL || mozURL).createObjectURL(stream);
-  console.log(peerId)
+  console.log('playStream: ',peerId)
   if(camera.find((id) => id === peerId) === undefined){
     camera.push(peerId)
     var videoElm = $('<video />', {
@@ -145,6 +217,10 @@ function playStream(stream,peerId) {
     });
     
     videoElm.appendTo($('#gallery'));
+    var video = document.getElementById(peerId);
+    video.srcObject=stream;
+    window.peer_stream = stream;
+  }else{
     var video = document.getElementById(peerId);
     video.srcObject=stream;
     window.peer_stream = stream;
@@ -196,27 +272,62 @@ function display(message) {
   $('<div />').html(message).appendTo('#display');
 }
 
-document.getElementById("call").addEventListener("click", function(){
-  
-  peer_id = document.getElementById("peer_id").value;
-  console.log(peer_id)
-  let remoteIds = {ids:peerIds}
-  
-  var call = me.call(peer_id, myStream,{
-    metadata: {
-        "peerIds": JSON.stringify(remoteIds)
-    }
-});
+  document.getElementById("btnCall").addEventListener("click", function(){
+    
+          peer_id = document.getElementById("peer_id").value;
+          console.log(peer_id)
+          var peer = getPeer(peer_id);
+          let remoteIds = {ids:peerIds}
+          
+          peer.outgoing = me.call(peer_id, myStream,{
+            metadata: {
+                "peerIds": JSON.stringify(remoteIds)
+            }
+          });
 
-  call.on('error', function(err) {
-    display(err);
-  });
+          peer.outgoing.on('error', function(err) {
+            display(err);
+          });
 
-  call.on('stream', function(stream) {
-    display('Connected to ' + peer_id + '.');
-    playStream(stream, peer_id);
-  });
+          peer.outgoing.on('stream', function(stream) {
+            display('Connected to ' + peer_id + '.');
+            playStream(stream, peer_id);
+            //document.getElementById("btnCall").className += " hidden";
+            //document.getElementById("btnReject").className = " btn btn-danger";
+          });
 
-  peerIds.push(peer_id)
-  console.log(peerIds)
-})
+          peer.outgoing.on('close', function() {
+            console.log('connection closed');
+            getOutgoingSessions((sessions)=>{
+              sessions.forEach((session)=>{
+                //video_stream = document.getElementById(id).srcObject
+                if(!session.outgoing.open){
+                  delete peers[session.id]
+                  $("#"+session.id).remove();
+                  camera = camera.filter(function(id) {
+                    return id !== session.id
+                  })
+                }
+              })
+            })
+          });
+
+          peerIds.push(peer_id)
+          console.log(peerIds)
+          console.log(peers)
+  })
+
+  document.getElementById("btnPeerId").addEventListener("click", function(){
+    
+    my_peer_id = document.getElementById("peerId").value;
+    console.log(my_peer_id)
+    document.getElementById("peer-id-label").innerHTML = "ID :"+ my_peer_id
+    init();
+  })
+
+  document.getElementById("btnReject").addEventListener("click", function(){
+     me.destroy();
+     init();
+    // document.getElementById("btnReject").className = "btn btn-danger hidden";
+     //document.getElementById("btnCall").className = "btn btn-success";
+  })
