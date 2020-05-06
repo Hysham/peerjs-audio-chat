@@ -98,7 +98,9 @@ function handleIncomingCall(incoming) {
   if(incoming.metadata!==undefined){
     console.log('---------------')
     acceptsCall = confirm("Videocall incoming, do you want to accept it ?");
-    peerIds = peerIds.concat(incoming.metadata.peerIds)
+    let rIds = JSON.parse(incoming.metadata.peerIds)
+    peerIds = peerIds.concat(rIds.ids)
+    
   }else{
     acceptsCall = true
   }
@@ -198,10 +200,11 @@ document.getElementById("call").addEventListener("click", function(){
   
   peer_id = document.getElementById("peer_id").value;
   console.log(peer_id)
+  let remoteIds = {ids:peerIds}
   
   var call = me.call(peer_id, myStream,{
     metadata: {
-        'peerIds': peerIds
+        "peerIds": JSON.stringify(remoteIds)
     }
 });
 
