@@ -20,11 +20,11 @@ function init() {
     connectToPeerJS(function(err) {
       if (err) return;
       
-      registerIdWithServer(me.id);
+      // registerIdWithServer(me.id);
       console.log('peer length: ',call.peers.length)
       playStream(stream, me.id)
-      if (call.peers.length) callPeers();
-      else displayShareMessage();
+      // if (call.peers.length) callPeers();
+      // else displayShareMessage();
     });
   });
 }
