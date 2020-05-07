@@ -56,7 +56,7 @@ function makePeerHeartbeater ( peer ) {
 function connectToPeerJS(cb) {
   display('Connecting to PeerJS...');
   me = new Peer(my_peer_id,{
-        host: "192.168.1.7",
+        host: "gra6.fesnit.net",
         port: 9000,
         path: '/peerjs',
         debug: 3,
