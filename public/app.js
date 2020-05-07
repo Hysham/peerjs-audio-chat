@@ -8,7 +8,7 @@ var peers = {};
 var camera = []
 var peerIds = []
 var my_peer_id;
-
+var heartbeater
 
 // Start everything up
 function init() {
@@ -29,11 +29,34 @@ function init() {
   });
 }
 
+function makePeerHeartbeater ( peer ) {
+  var timeoutId = 0;
+  function heartbeat () {
+      timeoutId = setTimeout( heartbeat, 20000 );
+      if ( peer.socket._wsOpen() ) {
+          console.log('1')
+          peer.socket.send( {type:'HEARTBEAT'} );
+      }
+  }
+  // Start 
+  heartbeat();
+  // return
+  return {
+      start : function () {
+          if ( timeoutId === 0 ) { heartbeat(); }
+      },
+      stop : function () {
+          clearTimeout( timeoutId );
+          timeoutId = 0;
+      }
+  };
+}
+
 // Connect to PeerJS and get an ID
 function connectToPeerJS(cb) {
   display('Connecting to PeerJS...');
   me = new Peer(my_peer_id,{
-        host: "gra6.fesnit.net",
+        host: "192.168.1.7",
         port: 9000,
         path: '/peerjs',
         debug: 3,
@@ -49,6 +72,7 @@ function connectToPeerJS(cb) {
   me.on('open', function() {
     display('Connected.');
     display('ID: ' + me.id);
+    heartbeater = makePeerHeartbeater( me );
     cb && cb(null, me);
   });
   
