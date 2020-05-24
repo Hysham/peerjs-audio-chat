@@ -9,6 +9,8 @@ var camera = []
 var peerIds = []
 var my_peer_id;
 var heartbeater
+var remote_conn
+var call_status
 
 // Start everything up
 function init() {
@@ -31,7 +33,7 @@ function init() {
 
 function makePeerHeartbeater ( peer ) {
   var timeoutId = 0;
-  function heartbeat () {
+  const heartbeat = () => {
       timeoutId = setTimeout( heartbeat, 20000 );
       if ( peer.socket._wsOpen() ) {
           console.log('1')
@@ -42,10 +44,10 @@ function makePeerHeartbeater ( peer ) {
   heartbeat();
   // return
   return {
-      start : function () {
+      start : () => {
           if ( timeoutId === 0 ) { heartbeat(); }
       },
-      stop : function () {
+      stop : () => {
           clearTimeout( timeoutId );
           timeoutId = 0;
       }
@@ -56,27 +58,49 @@ function makePeerHeartbeater ( peer ) {
 function connectToPeerJS(cb) {
   display('Connecting to PeerJS...');
   me = new Peer(my_peer_id,{
-        host: "gra6.fesnit.net",
-        port: 9000,
-        path: '/peerjs',
-        debug: 3,
-        config: {
-            'iceServers': [
-                { url: 'stun:stun1.l.google.com:19302' }
-            ]
-        }
-    });
+      host: "gra6.fesnit.net",
+      port: 9000,
+      path: '/peerjs',
+      secure:true,
+      //pingInterval:10000,
+      //debug: 3,
+      config: {
+          'iceServers': [
+              { url: 'stun:stun1.l.google.com:19302' }
+          ]
+      }}
+  );
 
   me.on('call', handleIncomingCall);
   
-  me.on('open', function() {
+  me.on('open', ()=> {
     display('Connected.');
-    display('ID: ' + me.id);
+    display('ID::: ' + me.id);
+
     heartbeater = makePeerHeartbeater( me );
     cb && cb(null, me);
   });
+
+  me.on('connection', (conn)=>{
+    remote_conn = conn
+    // con.on('data', function(data){
+    //     console.log('Incoming data', data);
+    //     con.send('REPLY');
+    // });
+    conn.on('open', () => {
+      console.log('Local peer has opened connection.');
+      console.log('conn', conn);
+      conn.on('data', data => console.log('Received from remote peer', data));
+      console.log('Local peer sending data.');
+      conn.send('connected...');
+      if(call_status==='decline'){
+        conn.send('Call declined');
+      }
+        
+    });
+  });
   
-  me.on('error', function(err) {
+  me.on('error', (err)=> {
     display(err);
     cb && cb(err);
   });
@@ -132,17 +156,20 @@ function callPeer(peerId) {
 // When someone initiates a call via PeerJS
 function handleIncomingCall(incoming) {
   console.log('incoming: ',incoming)
+  
   var acceptsCall 
   
   //concat remote ids
   if(incoming.metadata!==undefined){
     console.log('---------------')
     acceptsCall = confirm("Videocall incoming, do you want to accept it ?");
+    // acceptsCall = true
     let rIds = JSON.parse(incoming.metadata.peerIds)
-    peerIds = peerIds.concat(rIds.ids)
+    peerIds = rIds.ids
     
   }else{
     acceptsCall = true
+    peerIds = peerIds.concat(incoming.peer)
   }
 
 
@@ -150,8 +177,14 @@ function handleIncomingCall(incoming) {
     display('Answering incoming call from ' + incoming.peer);
     var peer = getPeer(incoming.peer);
     peer.incoming = incoming;
-    console.log('============')
+    
     incoming.answer(myStream);
+    // var data = {
+    //   from: my_peer_id,
+    //   text: 'connection answered'
+    // };
+    //incoming.close()
+    // remote_conn.send(data);
     peer.incoming.on('stream', function(stream) {
         addIncomingStream(peer, stream);
         console.log(peers)
@@ -179,15 +212,29 @@ function handleIncomingCall(incoming) {
       display(err);
     });
 
-    console.log('peerIds,:',peerIds)
+    
     if(incoming.metadata!==undefined){
-      peerIds = peerIds.filter((id)=>{
-        return id!==my_peer_id
-      })
       if(peerIds.length>0){
         callPeers()
       }
+      peerIds.push(peer.id)
     }
+    console.log('peerIds,:',peerIds)
+    
+  }else{
+    console.log('call declined',incoming.open)
+    me.disconnect()
+    //call_status = 'decline'
+    //remote_conn.send('decline')
+
+
+    // var data = {
+    //   from: my_peer_id,
+    //   text: 'connection ended'
+    // };
+    //incoming.close()
+    //console.log(remote_conn)
+    ///remote_conn.send(data);
   }
   
   
@@ -225,6 +272,7 @@ function addIncomingStream(peer, stream) {
   display('Adding incoming stream from ' + peer.id);
   peer.incomingStream = stream;
   playStream(stream, peer.id);
+  console.log(peers)
 }
 
 // Create an <audio> element to play the audio stream
@@ -243,11 +291,11 @@ function playStream(stream,peerId) {
     videoElm.appendTo($('#gallery'));
     var video = document.getElementById(peerId);
     video.srcObject=stream;
-    window.peer_stream = stream;
+    // window.peer_stream = stream;
   }else{
     var video = document.getElementById(peerId);
     video.srcObject=stream;
-    window.peer_stream = stream;
+    //window.peer_stream = stream;
   }
   
 }
@@ -302,12 +350,28 @@ function display(message) {
           console.log(peer_id)
           var peer = getPeer(peer_id);
           let remoteIds = {ids:peerIds}
-          
+          var con = me.connect(peer_id);
+          con.on('data', function(data) {
+            console.log('received data:',data)
+          });
+         // con.send('hi')
+          remote_conn = con
+          peer.connection = con
           peer.outgoing = me.call(peer_id, myStream,{
             metadata: {
                 "peerIds": JSON.stringify(remoteIds)
             }
           });
+
+          //setTimeout(()=>{
+            fetch('https://murmuring-hamlet-10094.herokuapp.com/push?username=+94778850088@nuapp.me',{method: 'GET'})
+            .then((response) => response.json())
+            .then(mess=>{
+              console.log(mess)
+            }).catch(err=>console.log(err))
+          //},10000)
+
+          console.log('outgoing::',peer.outgoing)
 
           peer.outgoing.on('error', function(err) {
             display(err);
@@ -315,9 +379,9 @@ function display(message) {
 
           peer.outgoing.on('stream', function(stream) {
             display('Connected to ' + peer_id + '.');
+            
             playStream(stream, peer_id);
-            //document.getElementById("btnCall").className += " hidden";
-            //document.getElementById("btnReject").className = " btn btn-danger";
+            
           });
 
           peer.outgoing.on('close', function() {
@@ -336,9 +400,10 @@ function display(message) {
             })
           });
 
-          peerIds.push(peer_id)
+          
           console.log(peerIds)
-          console.log(peers)
+          peerIds.push(peer_id)
+          console.log('peerIds,:',peerIds)
   })
 
   document.getElementById("btnPeerId").addEventListener("click", function(){
@@ -350,8 +415,21 @@ function display(message) {
   })
 
   document.getElementById("btnReject").addEventListener("click", function(){
-     me.destroy();
-     init();
-    // document.getElementById("btnReject").className = "btn btn-danger hidden";
-     //document.getElementById("btnCall").className = "btn btn-success";
+     console.log("btnReject")
+     remotePeer = peers[peerIds[0]]
+     remotePeer.outgoing.close();
+     me.disconnect();
   })
+
+  document.getElementById("msgBtn").addEventListener("click", function(){
+     let message = document.getElementById("send_message").value;
+
+     var data = {
+        from: my_peer_id,
+        text: message
+      };
+
+      // Send the message with Peer
+      remote_conn.send(data);
+      
+ })
