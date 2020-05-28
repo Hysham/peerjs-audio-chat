@@ -284,6 +284,8 @@ function playStream(stream,peerId) {
     var videoElm = $('<video />', {
       id:peerId,
       autoplay:'autoplay',
+      // muted:false,
+      // volume:0,
       width:300,
       height:300
     });
@@ -291,6 +293,8 @@ function playStream(stream,peerId) {
     videoElm.appendTo($('#gallery'));
     var video = document.getElementById(peerId);
     video.srcObject=stream;
+    // video.volume = 0.9;
+    // video.play()
     // window.peer_stream = stream;
   }else{
     var video = document.getElementById(peerId);
@@ -304,21 +308,36 @@ function playStream(stream,peerId) {
 function getLocalAudioStream(cb) {
   display('Trying to access your microphone. Please click "Allow".');
 
-  navigator.getUserMedia (
-    {video: true, audio: true},
+  // navigator.getUserMedia (
+  //   {video: true, audio: true},
 
-    function success(audioStream) {
-      display('Microphone is open.');
-      myStream = audioStream;
+  //   success = (audioStream) => {
+  //     display('Microphone is open.');
+  //     myStream = audioStream;
       
-      if (cb) cb(null, myStream);
-    },
+  //     if (cb) cb(null, myStream);
+  //   },
 
-    function error(err) {
-      display('Couldn\'t connect to microphone. Reload the page to try again.');
-      if (cb) cb(err);
-    }
-  );
+  //   error = (err) => {
+  //     display('Couldn\'t connect to microphone. Reload the page to try again.');
+  //     if (cb) cb(err);
+  //   }
+  // );
+
+
+  navigator.mediaDevices.getUserMedia({ audio: true, video: true })
+  .then(function(stream) {
+    /* use the stream */
+    display('Microphone is open.');
+    myStream = stream;
+      
+    if (cb) cb(null, stream);
+  })
+  .catch(function(err) {
+    /* handle the error */
+    display('Couldn\'t connect to microphone. Reload the page to try again.');
+    if (cb) cb(err);
+  });
 }
 
 ////////////////////////////////////
@@ -364,7 +383,7 @@ function display(message) {
           });
 
           //setTimeout(()=>{
-            fetch('https://murmuring-hamlet-10094.herokuapp.com/push?username=+94778850088@nuapp.me',{method: 'GET'})
+            fetch('https://murmuring-hamlet-10094.herokuapp.com/push?username=+'+peer_id+'@nuapp.me',{method: 'GET'})
             .then((response) => response.json())
             .then(mess=>{
               console.log(mess)
