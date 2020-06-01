@@ -1,6 +1,6 @@
 // Handle prefixed versions
-navigator.getUserMedia = (navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia);
-
+//navigator.getUserMedia = (navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia);
+navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
 // State
 var me = {};
 var myStream;
@@ -16,19 +16,20 @@ var call_status
 function init() {
   if (!navigator.getUserMedia) return unsupported();
 
-  getLocalAudioStream(function(err, stream) {
-    if (err || !stream) return;
+    navigator.getUserMedia({audio: true, video: true}, function(stream){
+      myStream = stream
     
-    connectToPeerJS(function(err) {
+
+    connectToPeerJS((err) => {
       if (err) return;
       
       // registerIdWithServer(me.id);
       console.log('peer length: ',call.peers.length)
-      playStream(stream, me.id)
+      playStream(myStream, me.id)
       // if (call.peers.length) callPeers();
       // else displayShareMessage();
     });
-  });
+  })
 }
 
 function makePeerHeartbeater ( peer ) {
@@ -269,6 +270,7 @@ function getOutgoingSessions(cb){
 // Add the new audio stream. Either from an incoming call, or
 // from the response to one of our outgoing calls
 function addIncomingStream(peer, stream) {
+  
   display('Adding incoming stream from ' + peer.id);
   peer.incomingStream = stream;
   playStream(stream, peer.id);
@@ -284,18 +286,25 @@ function playStream(stream,peerId) {
     var videoElm = $('<video />', {
       id:peerId,
       autoplay:'autoplay',
-      // muted:false,
       // volume:0,
       width:300,
       height:300
     });
+
+    //videoElm.muted = true
     
     videoElm.appendTo($('#gallery'));
     var video = document.getElementById(peerId);
+    // video.volume = 0;
+    if(my_peer_id===peerId){
+      video.muted = true
+    }
+    
     video.srcObject=stream;
-    // video.volume = 0.9;
+
     // video.play()
     // window.peer_stream = stream;
+    console.log(video)
   }else{
     var video = document.getElementById(peerId);
     video.srcObject=stream;
@@ -307,37 +316,9 @@ function playStream(stream,peerId) {
 // Get access to the microphone
 function getLocalAudioStream(cb) {
   display('Trying to access your microphone. Please click "Allow".');
-
-  // navigator.getUserMedia (
-  //   {video: true, audio: true},
-
-  //   success = (audioStream) => {
-  //     display('Microphone is open.');
-  //     myStream = audioStream;
-      
-  //     if (cb) cb(null, myStream);
-  //   },
-
-  //   error = (err) => {
-  //     display('Couldn\'t connect to microphone. Reload the page to try again.');
-  //     if (cb) cb(err);
-  //   }
-  // );
-
-
-  navigator.mediaDevices.getUserMedia({ audio: true, video: true })
-  .then(function(stream) {
-    /* use the stream */
-    display('Microphone is open.');
-    myStream = stream;
-      
-    if (cb) cb(null, stream);
+  navigator.getUserMedia({audio: true, video: true}, function(stream){
+    if(cb) cb(null, stream)
   })
-  .catch(function(err) {
-    /* handle the error */
-    display('Couldn\'t connect to microphone. Reload the page to try again.');
-    if (cb) cb(err);
-  });
 }
 
 ////////////////////////////////////
